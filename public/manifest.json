@@ -1,0 +1,24 @@
+{
+  "name": "TranslateAI - Luyện Dịch Tiếng Anh",
+  "short_name": "TranslateAI",
+  "description": "Luyện dịch tiếng Anh chuyên ngành với hỗ trợ AI và sổ tay từ vựng.",
+  "lang": "vi-VN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5a0",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
