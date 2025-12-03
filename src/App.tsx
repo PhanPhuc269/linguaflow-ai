@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import LessonPreview from "./pages/LessonPreview";
 import Lessons from "./pages/Lessons";
 import Practice from "./pages/Practice";
 import Vocabulary from "./pages/Vocabulary";
@@ -22,6 +23,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/lesson-preview" element={<LessonPreview />} />
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/practice/:lessonId" element={<Practice />} />
           <Route path="/vocabulary" element={<Vocabulary />} />
