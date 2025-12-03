@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Book, ChevronLeft, ChevronRight, Languages } from "lucide-react";
+import { ArrowLeft, MessageSquare, Book, ChevronLeft, ChevronRight, Plus, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { SentencePanel } from "@/components/practice/SentencePanel";
 import { TranslationInput } from "@/components/practice/TranslationInput";
 import { FeedbackPanel } from "@/components/practice/FeedbackPanel";
 import { ChatBox } from "@/components/chat/ChatBox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import type { Sentence, TranslationFeedback } from "@/types";
 
-const mockSentences: Sentence[] = [
+const initialSentences: Sentence[] = [
   {
     id: "1",
     vietnamese: "Bệnh nhân cần được theo dõi huyết áp thường xuyên để phát hiện sớm các biến chứng tim mạch.",
@@ -27,21 +30,38 @@ const mockSentences: Sentence[] = [
   },
 ];
 
+const additionalSentences: Sentence[] = [
+  {
+    id: "4",
+    vietnamese: "Xét nghiệm máu cho thấy nồng độ cholesterol của bệnh nhân vượt ngưỡng cho phép.",
+    suggestedTranslation: "Blood tests show the patient's cholesterol levels exceed the permissible threshold.",
+  },
+  {
+    id: "5",
+    vietnamese: "Bác sĩ khuyến cáo bệnh nhân nên tập thể dục đều đặn và duy trì chế độ ăn lành mạnh.",
+    suggestedTranslation: "The doctor recommends that the patient exercise regularly and maintain a healthy diet.",
+  },
+];
+
 export default function Practice() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [sentences, setSentences] = useState<Sentence[]>(initialSentences);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [feedback, setFeedback] = useState<TranslationFeedback | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [addSentenceOpen, setAddSentenceOpen] = useState(false);
+  const [addRequest, setAddRequest] = useState("");
+  const [isAddingSentences, setIsAddingSentences] = useState(false);
 
-  const currentSentence = mockSentences[currentIndex];
-  const progress = ((currentIndex + 1) / mockSentences.length) * 100;
+  const currentSentence = sentences[currentIndex];
+  const progress = ((currentIndex + 1) / sentences.length) * 100;
 
   const handleSubmitTranslation = async (translation: string) => {
     setIsEvaluating(true);
     
-    // Simulate AI evaluation
     setTimeout(() => {
       const mockFeedback: TranslationFeedback = {
         score: Math.floor(Math.random() * 30) + 70,
@@ -69,12 +89,34 @@ export default function Practice() {
   };
 
   const handleNextSentence = () => {
-    if (currentIndex < mockSentences.length - 1) {
+    if (currentIndex < sentences.length - 1) {
       setCurrentIndex((i) => i + 1);
       setFeedback(null);
     } else {
       navigate("/lessons");
     }
+  };
+
+  const handleAddSentences = () => {
+    setIsAddingSentences(true);
+    
+    // Simulate AI generating new sentences
+    setTimeout(() => {
+      const newSentences = additionalSentences.map((s, i) => ({
+        ...s,
+        id: `new-${Date.now()}-${i}`,
+      }));
+      
+      setSentences((prev) => [...prev, ...newSentences]);
+      setIsAddingSentences(false);
+      setAddSentenceOpen(false);
+      setAddRequest("");
+      
+      toast({
+        title: "Đã thêm câu mới",
+        description: `${newSentences.length} câu mới đã được thêm vào bài học.`,
+      });
+    }, 2000);
   };
 
   return (
@@ -95,12 +137,21 @@ export default function Practice() {
           {/* Progress */}
           <div className="flex items-center gap-3 flex-1 max-w-xs mx-4">
             <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {currentIndex + 1}/{mockSentences.length}
+              {currentIndex + 1}/{sentences.length}
             </span>
             <Progress value={progress} className="h-2" />
           </div>
 
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setAddSentenceOpen(true)}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Thêm câu</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate("/vocabulary")}>
               <Book className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Từ vựng</span>
@@ -156,7 +207,7 @@ export default function Practice() {
           </Button>
           <Button
             variant="outline"
-            disabled={currentIndex === mockSentences.length - 1}
+            disabled={currentIndex === sentences.length - 1}
             onClick={() => {
               setCurrentIndex((i) => i + 1);
               setFeedback(null);
@@ -180,6 +231,82 @@ export default function Practice() {
       >
         <MessageSquare className="h-5 w-5" />
       </Button>
+
+      {/* Add Sentences Dialog */}
+      <Dialog open={addSentenceOpen} onOpenChange={setAddSentenceOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Thêm câu mới
+            </DialogTitle>
+            <DialogDescription>
+              Yêu cầu AI tạo thêm câu để luyện tập. Bạn có thể mô tả loại câu muốn thêm.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <Textarea
+              value={addRequest}
+              onChange={(e) => setAddRequest(e.target.value)}
+              placeholder="VD: Thêm câu về chẩn đoán bệnh, thêm câu khó hơn về thuốc..."
+              className="min-h-[100px]"
+            />
+            
+            <div className="flex gap-2 flex-wrap">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setAddRequest("Thêm 3 câu về chẩn đoán bệnh")}
+              >
+                Chẩn đoán
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setAddRequest("Thêm câu khó hơn về thuốc và liều lượng")}
+              >
+                Thuốc & liều
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setAddRequest("Thêm câu về giao tiếp với bệnh nhân")}
+              >
+                Giao tiếp
+              </Button>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setAddSentenceOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button 
+                variant="hero" 
+                className="flex-1"
+                onClick={handleAddSentences}
+                disabled={isAddingSentences}
+              >
+                {isAddingSentences ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Đang tạo...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Thêm câu
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
