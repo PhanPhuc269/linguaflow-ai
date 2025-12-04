@@ -1,19 +1,24 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Sparkles, Send, Loader2, Check, RefreshCw, Languages, BookOpen, Zap } from "lucide-react";
+import { ArrowLeft, Sparkles, Send, Loader2, Check, RefreshCw, Languages, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useToast } from "@/hooks/use-toast";
+
+interface Sentence {
+  id: string;
+  vietnamese: string;
+}
 
 interface ProposedLesson {
   id: string;
   title: string;
   description: string;
   difficulty: "beginner" | "intermediate" | "advanced";
-  sentenceCount: number;
-  sampleSentences: string[];
+  sentences: Sentence[];
 }
 
 const difficultyConfig = {
@@ -22,81 +27,91 @@ const difficultyConfig = {
   advanced: { label: "Nâng cao", color: "bg-primary text-primary-foreground" },
 };
 
+const generateMockLessons = (topic: string): ProposedLesson[] => [
+  {
+    id: "1",
+    title: `Thuật ngữ ${topic} cơ bản`,
+    description: `Học các thuật ngữ ${topic.toLowerCase()} thường gặp trong giao tiếp`,
+    difficulty: "beginner",
+    sentences: [
+      { id: "1-1", vietnamese: `${topic} là một lĩnh vực quan trọng trong thời đại hiện nay.` },
+      { id: "1-2", vietnamese: `Các chuyên gia ${topic.toLowerCase()} cần nắm vững kiến thức nền tảng.` },
+      { id: "1-3", vietnamese: `Thuật ngữ chuyên ngành giúp giao tiếp hiệu quả hơn.` },
+      { id: "1-4", vietnamese: `Việc học từ vựng chuyên ngành rất quan trọng.` },
+    ],
+  },
+  {
+    id: "2",
+    title: `${topic} nâng cao - Phần 1`,
+    description: `Các khái niệm và thuật ngữ nâng cao trong lĩnh vực ${topic.toLowerCase()}`,
+    difficulty: "intermediate",
+    sentences: [
+      { id: "2-1", vietnamese: `Phương pháp này đã được áp dụng rộng rãi trong ${topic.toLowerCase()}.` },
+      { id: "2-2", vietnamese: `Quy trình chuẩn đảm bảo chất lượng và hiệu quả công việc.` },
+      { id: "2-3", vietnamese: `Các tiêu chuẩn quốc tế ngày càng được chú trọng.` },
+      { id: "2-4", vietnamese: `Việc cập nhật kiến thức mới là điều cần thiết.` },
+      { id: "2-5", vietnamese: `Nghiên cứu cho thấy kết quả khả quan trong thử nghiệm.` },
+    ],
+  },
+  {
+    id: "3",
+    title: `Văn bản chuyên ngành ${topic}`,
+    description: `Luyện dịch các đoạn văn bản, báo cáo chuyên ngành`,
+    difficulty: "advanced",
+    sentences: [
+      { id: "3-1", vietnamese: `Theo kết quả phân tích, tỷ lệ thành công đạt 95%.` },
+      { id: "3-2", vietnamese: `Quy trình này đòi hỏi sự chính xác cao trong từng bước.` },
+      { id: "3-3", vietnamese: `Báo cáo nghiên cứu cho thấy xu hướng phát triển mới.` },
+    ],
+  },
+];
+
 export default function LessonPreview() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const topic = location.state?.topic || "Chủ đề chung";
 
   const [isRefining, setIsRefining] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [refinementRequest, setRefinementRequest] = useState("");
-  const [refinementCount, setRefinementCount] = useState(0);
+  const [proposedLessons, setProposedLessons] = useState<ProposedLesson[]>(() => generateMockLessons(topic));
+  const [expandedLessons, setExpandedLessons] = useState<string[]>([]);
 
-  // Mock AI-proposed lessons
-  const [proposedLessons, setProposedLessons] = useState<ProposedLesson[]>([
-    {
-      id: "1",
-      title: `Thuật ngữ ${topic} cơ bản`,
-      description: `Học các thuật ngữ ${topic.toLowerCase()} thường gặp trong giao tiếp và tài liệu chuyên ngành`,
-      difficulty: "beginner",
-      sentenceCount: 10,
-      sampleSentences: [
-        "Bệnh nhân cần được theo dõi huyết áp thường xuyên.",
-        "Phương pháp điều trị này đã được chứng minh hiệu quả.",
-      ],
-    },
-    {
-      id: "2",
-      title: `${topic} nâng cao - Phần 1`,
-      description: `Các khái niệm và thuật ngữ nâng cao trong lĩnh vực ${topic.toLowerCase()}`,
-      difficulty: "intermediate",
-      sentenceCount: 12,
-      sampleSentences: [
-        "Nghiên cứu lâm sàng cho thấy kết quả khả quan.",
-        "Tác dụng phụ của thuốc có thể bao gồm buồn nôn.",
-      ],
-    },
-    {
-      id: "3",
-      title: `Văn bản chuyên ngành ${topic}`,
-      description: `Luyện dịch các đoạn văn bản, báo cáo chuyên ngành ${topic.toLowerCase()}`,
-      difficulty: "advanced",
-      sentenceCount: 8,
-      sampleSentences: [
-        "Theo kết quả phân tích, tỷ lệ thành công đạt 95%.",
-        "Quy trình này đòi hỏi sự chính xác cao trong từng bước.",
-      ],
-    },
-  ]);
+  const toggleLesson = (lessonId: string) => {
+    setExpandedLessons((prev) =>
+      prev.includes(lessonId) ? prev.filter((id) => id !== lessonId) : [...prev, lessonId]
+    );
+  };
 
   const handleRefine = async () => {
     if (!refinementRequest.trim() || isRefining) return;
 
     setIsRefining(true);
-    
-    // Simulate AI refinement
     setTimeout(() => {
-      setRefinementCount((c) => c + 1);
-      setProposedLessons((prev) =>
-        prev.map((lesson) => ({
-          ...lesson,
-          title: `${lesson.title} (Đã điều chỉnh ${refinementCount + 1})`,
-        }))
-      );
+      setProposedLessons(generateMockLessons(topic));
       setRefinementRequest("");
       setIsRefining(false);
+      toast({
+        title: "Đã cập nhật đề xuất",
+        description: "AI đã điều chỉnh nội dung theo yêu cầu của bạn.",
+      });
     }, 2000);
   };
 
   const handleCreateLessons = async () => {
     setIsCreating(true);
-    
-    // Simulate lesson creation
     setTimeout(() => {
       setIsCreating(false);
+      toast({
+        title: "Tạo bài học thành công!",
+        description: `Đã tạo ${proposedLessons.length} bài học với tổng ${totalSentences} câu.`,
+      });
       navigate("/lessons");
     }, 1500);
   };
+
+  const totalSentences = proposedLessons.reduce((acc, l) => acc + l.sentences.length, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,11 +127,9 @@ export default function LessonPreview() {
               <p className="text-xs text-muted-foreground">Chủ đề: {topic}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center">
-              <Languages className="h-4 w-4 text-primary-foreground" />
-            </div>
-          </div>
+          <Badge variant="outline" className="hidden sm:flex">
+            {proposedLessons.length} bài · {totalSentences} câu
+          </Badge>
         </div>
       </header>
 
@@ -125,7 +138,7 @@ export default function LessonPreview() {
         <div className="flex items-center justify-center mb-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-light text-primary text-sm font-medium animate-fade-in">
             <Sparkles className="h-4 w-4" />
-            AI đã đề xuất {proposedLessons.length} bài học
+            AI đã đề xuất {proposedLessons.length} bài học với {totalSentences} câu
           </div>
         </div>
 
@@ -135,52 +148,67 @@ export default function LessonPreview() {
             <BookOpen className="h-5 w-5 text-primary" />
             Bài học được đề xuất
           </h2>
-          
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-4">
-              {proposedLessons.map((lesson, index) => (
+
+          <div className="space-y-3">
+            {proposedLessons.map((lesson, index) => {
+              const isExpanded = expandedLessons.includes(lesson.id);
+              const difficulty = difficultyConfig[lesson.difficulty];
+
+              return (
                 <Card
                   key={lesson.id}
                   variant="elevated"
-                  className="animate-fade-in"
+                  className="animate-fade-in overflow-hidden"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge className={difficultyConfig[lesson.difficulty].color}>
-                            {difficultyConfig[lesson.difficulty].label}
-                          </Badge>
-                          <Badge variant="outline">{lesson.sentenceCount} câu</Badge>
+                  <Collapsible open={isExpanded} onOpenChange={() => toggleLesson(lesson.id)}>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center font-bold text-primary flex-shrink-0">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Badge className={difficulty.color}>{difficulty.label}</Badge>
+                              <Badge variant="outline">{lesson.sentences.length} câu</Badge>
+                            </div>
+                            <CardTitle className="text-base">{lesson.title}</CardTitle>
+                            <CardDescription className="mt-1">{lesson.description}</CardDescription>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          )}
                         </div>
-                        <CardTitle className="text-base">{lesson.title}</CardTitle>
-                        <CardDescription className="mt-1">
-                          {lesson.description}
-                        </CardDescription>
-                      </div>
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary-light flex items-center justify-center font-bold text-primary">
-                        {index + 1}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground mb-2">Câu mẫu:</p>
-                    <div className="space-y-2">
-                      {lesson.sampleSentences.map((sentence, i) => (
-                        <p
-                          key={i}
-                          className="text-sm bg-muted/50 px-3 py-2 rounded-lg italic"
-                        >
-                          "{sentence}"
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 border-t border-border">
+                        <p className="text-xs text-muted-foreground mb-3 pt-3">
+                          Các câu trong bài học ({lesson.sentences.length} câu):
                         </p>
-                      ))}
-                    </div>
-                  </CardContent>
+                        <div className="space-y-2">
+                          {lesson.sentences.map((sentence, sIndex) => (
+                            <div
+                              key={sentence.id}
+                              className="flex gap-3 p-3 rounded-lg bg-muted/30"
+                            >
+                              <span className="text-xs text-muted-foreground font-medium min-w-[24px]">
+                                {sIndex + 1}.
+                              </span>
+                              <p className="text-sm flex-1">{sentence.vietnamese}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </Card>
-              ))}
-            </div>
-          </ScrollArea>
+              );
+            })}
+          </div>
         </div>
 
         {/* Refinement Section */}
@@ -194,7 +222,7 @@ export default function LessonPreview() {
               <Input
                 value={refinementRequest}
                 onChange={(e) => setRefinementRequest(e.target.value)}
-                placeholder="VD: Thêm bài về thuật ngữ pháp lý, giảm độ khó..."
+                placeholder="VD: Thêm bài về thuật ngữ pháp lý, giảm độ khó, thêm câu..."
                 className="flex-1"
                 onKeyDown={(e) => e.key === "Enter" && handleRefine()}
                 disabled={isRefining}
@@ -211,22 +239,12 @@ export default function LessonPreview() {
                 )}
               </Button>
             </div>
-            {refinementCount > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Đã điều chỉnh {refinementCount} lần
-              </p>
-            )}
           </CardContent>
         </Card>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => navigate("/")}
-            disabled={isCreating}
-          >
+          <Button variant="outline" size="lg" onClick={() => navigate("/")} disabled={isCreating}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Quay lại
           </Button>
@@ -245,7 +263,7 @@ export default function LessonPreview() {
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Tạo bài học
+                Tạo {proposedLessons.length} bài học
               </>
             )}
           </Button>
