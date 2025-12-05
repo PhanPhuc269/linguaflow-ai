@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://your-domain.com/</loc>
+    <loc>https://enlin.phanphuc.id.vn/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://your-domain.com/lessons</loc>
+    <loc>https://enlin.phanphuc.id.vn/lessons</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://your-domain.com/vocabulary</loc>
+    <loc>https://enlin.phanphuc.id.vn/vocabulary</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://your-domain.com/history</loc>
+    <loc>https://enlin.phanphuc.id.vn/history</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://your-domain.com/lesson-preview</loc>
+    <loc>https://enlin.phanphuc.id.vn/lesson-preview</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://your-domain.com/login</loc>
+    <loc>https://enlin.phanphuc.id.vn/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://your-domain.com/register</loc>
+    <loc>https://enlin.phanphuc.id.vn/register</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
