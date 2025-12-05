@@ -2,11 +2,19 @@ export interface Lesson {
   id: string;
   title: string;
   description: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  sentenceCount: number;
-  topic: string;
+  difficulty:
+    | "beginner"
+    | "intermediate"
+    | "advanced"
+    | "BEGINNER"
+    | "INTERMEDIATE"
+    | "ADVANCED";
+  sentenceCount?: number;
+  totalSentences?: number;
+  topic?: string;
   completed?: boolean;
   score?: number;
+  orderIndex?: number;
 }
 
 export interface Sentence {
@@ -27,7 +35,7 @@ export interface TranslationFeedback {
 export interface Mistake {
   original: string;
   correction: string;
-  type: 'grammar' | 'vocabulary' | 'word_order' | 'spelling';
+  type: "grammar" | "vocabulary" | "word_order" | "spelling";
   explanation: string;
 }
 
@@ -44,7 +52,7 @@ export interface VocabularyItem {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
@@ -53,4 +61,24 @@ export interface HighlightMenuAction {
   label: string;
   icon: React.ReactNode;
   action: () => void;
+}
+
+export interface Topic {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface TopicPlan {
+  topic: string;
+  description: string;
+  lessons: ProposedLesson[];
+}
+
+export interface ProposedLesson {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: "beginner" | "intermediate" | "advanced" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+  sentences: Sentence[];
 }

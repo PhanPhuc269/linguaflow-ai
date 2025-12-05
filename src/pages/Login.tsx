@@ -4,23 +4,62 @@ import { Languages, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { useAppDispatch } from "@/store/hooks";
+import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
+import { authService } from "@/services/auth.service";
+import { toast } from "sonner";
+import { setUser } from "@/store/authSlice";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const dispatch = useAppDispatch();
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate("/lessons");
-    }, 1500);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: authService.login,
+    onSuccess: (data) => {
+      toast.success("Đăng nhập thành công!");
+      dispatch(setUser(data.user));
+      navigate("/");
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { error?: string } } };
+      const errorMessage =
+        error.response?.data?.error ||
+        "Email hoặc mật khẩu không đúng. Vui lòng thử lại.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    },
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    setError(null);
+    loginMutation.mutate(data);
   };
 
   return (
@@ -29,7 +68,10 @@ export default function Login() {
       <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
 
-      <Card variant="glass" className="w-full max-w-md relative animate-fade-in">
+      <Card
+        variant="glass"
+        className="w-full max-w-md relative animate-fade-in"
+      >
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center">
@@ -42,7 +84,7 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -52,8 +94,7 @@ export default function Login() {
                   type="email"
                   placeholder="email@example.com"
                   className="pl-10"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  {...register("email")}
                   required
                 />
               </div>
@@ -61,7 +102,10 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Mật khẩu</Label>
-                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-primary hover:underline"
+                >
                   Quên mật khẩu?
                 </Link>
               </div>
@@ -72,14 +116,18 @@ export default function Login() {
                   type="password"
                   placeholder="••••••••"
                   className="pl-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register("password")}
                   required
                 />
               </div>
             </div>
-            <Button type="submit" variant="hero" className="w-full" disabled={isLoading}>
-              {isLoading ? (
+            <Button
+              type="submit"
+              variant="hero"
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Đang đăng nhập...
@@ -95,7 +143,10 @@ export default function Login() {
 
           <div className="mt-6 text-center text-sm">
             <span className="text-muted-foreground">Chưa có tài khoản? </span>
-            <Link to="/register" className="text-primary font-medium hover:underline">
+            <Link
+              to="/register"
+              className="text-primary font-medium hover:underline"
+            >
               Đăng ký ngay
             </Link>
           </div>

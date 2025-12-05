@@ -37,11 +37,8 @@ export default function Index() {
     if (!topic.trim()) return;
     
     setIsGenerating(true);
-    // Simulate AI generating lesson proposals
-    setTimeout(() => {
-      setIsGenerating(false);
-      navigate("/lesson-preview", { state: { topic: topic.trim() } });
-    }, 2000);
+    setIsGenerating(false);
+    navigate("/lesson-preview", { state: { topic: topic.trim() } });
   };
 
   return (

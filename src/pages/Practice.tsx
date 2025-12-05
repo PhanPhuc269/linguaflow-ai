@@ -1,53 +1,81 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Book, ChevronLeft, ChevronRight, Plus, Loader2, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  MessageSquare,
+  Book,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { SentencePanel } from "@/components/practice/SentencePanel";
 import { TranslationInput } from "@/components/practice/TranslationInput";
 import { FeedbackPanel } from "@/components/practice/FeedbackPanel";
 import { ChatBox } from "@/components/chat/ChatBox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { Sentence, TranslationFeedback } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { lessonService } from "@/services/lesson.service";
+import { practiceService } from "@/services/practice.service";
 
-const initialSentences: Sentence[] = [
-  {
-    id: "1",
-    vietnamese: "Bệnh nhân cần được theo dõi huyết áp thường xuyên để phát hiện sớm các biến chứng tim mạch.",
-    suggestedTranslation: "The patient needs regular blood pressure monitoring to detect early cardiovascular complications.",
-  },
-  {
-    id: "2",
-    vietnamese: "Phương pháp điều trị này đã được chứng minh hiệu quả qua nhiều nghiên cứu lâm sàng.",
-    suggestedTranslation: "This treatment method has been proven effective through numerous clinical studies.",
-  },
-  {
-    id: "3",
-    vietnamese: "Tác dụng phụ của thuốc có thể bao gồm buồn nôn, chóng mặt và mệt mỏi.",
-    suggestedTranslation: "Side effects of the medication may include nausea, dizziness, and fatigue.",
-  },
-];
+// const initialSentences: Sentence[] = [
+//   {
+//     id: "1",
+//     vietnamese:
+//       "Bệnh nhân cần được theo dõi huyết áp thường xuyên để phát hiện sớm các biến chứng tim mạch.",
+//     suggestedTranslation:
+//       "The patient needs regular blood pressure monitoring to detect early cardiovascular complications.",
+//   },
+//   {
+//     id: "2",
+//     vietnamese:
+//       "Phương pháp điều trị này đã được chứng minh hiệu quả qua nhiều nghiên cứu lâm sàng.",
+//     suggestedTranslation:
+//       "This treatment method has been proven effective through numerous clinical studies.",
+//   },
+//   {
+//     id: "3",
+//     vietnamese:
+//       "Tác dụng phụ của thuốc có thể bao gồm buồn nôn, chóng mặt và mệt mỏi.",
+//     suggestedTranslation:
+//       "Side effects of the medication may include nausea, dizziness, and fatigue.",
+//   },
+// ];
 
-const additionalSentences: Sentence[] = [
-  {
-    id: "4",
-    vietnamese: "Xét nghiệm máu cho thấy nồng độ cholesterol của bệnh nhân vượt ngưỡng cho phép.",
-    suggestedTranslation: "Blood tests show the patient's cholesterol levels exceed the permissible threshold.",
-  },
-  {
-    id: "5",
-    vietnamese: "Bác sĩ khuyến cáo bệnh nhân nên tập thể dục đều đặn và duy trì chế độ ăn lành mạnh.",
-    suggestedTranslation: "The doctor recommends that the patient exercise regularly and maintain a healthy diet.",
-  },
-];
+// const additionalSentences: Sentence[] = [
+//   {
+//     id: "4",
+//     vietnamese:
+//       "Xét nghiệm máu cho thấy nồng độ cholesterol của bệnh nhân vượt ngưỡng cho phép.",
+//     suggestedTranslation:
+//       "Blood tests show the patient's cholesterol levels exceed the permissible threshold.",
+//   },
+//   {
+//     id: "5",
+//     vietnamese:
+//       "Bác sĩ khuyến cáo bệnh nhân nên tập thể dục đều đặn và duy trì chế độ ăn lành mạnh.",
+//     suggestedTranslation:
+//       "The doctor recommends that the patient exercise regularly and maintain a healthy diet.",
+//   },
+// ];
 
 export default function Practice() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [sentences, setSentences] = useState<Sentence[]>(initialSentences);
+  const [sentences, setSentences] = useState<Sentence[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [feedback, setFeedback] = useState<TranslationFeedback | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -56,36 +84,61 @@ export default function Practice() {
   const [addRequest, setAddRequest] = useState("");
   const [isAddingSentences, setIsAddingSentences] = useState(false);
 
-  const currentSentence = sentences[currentIndex];
-  const progress = ((currentIndex + 1) / sentences.length) * 100;
+  const { data: fetchedSentences = [], isLoading } = useQuery<
+    Sentence[],
+    Error
+  >({
+    queryKey: ["lesson", lessonId, "sentences"],
+    queryFn: async () => {
+      const res = await lessonService.getLessonContent(lessonId);
+      // normalize different possible shapes from service/interceptor
+      if (Array.isArray(res)) return res;
+      if ((res as any)?.sentences) return (res as any).sentences;
+      if ((res as any)?.result) return (res as any).result;
+      return [] as Sentence[];
+    },
+    enabled: !!lessonId,
+  });
+
+  // keep a safe current sentence and progress calculation
+  const currentSentence = sentences[currentIndex] ??
+    sentences[0] ?? {
+      id: "",
+      vietnamese: "",
+      suggestedTranslation: "",
+    };
+  const progress = sentences.length
+    ? ((currentIndex + 1) / sentences.length) * 100
+    : 0;
+
+  // when fetched sentences arrive, replace local sentences
+  useEffect(() => {
+    if (fetchedSentences && fetchedSentences.length) {
+      setSentences(fetchedSentences);
+      setCurrentIndex(0);
+    }
+  }, [fetchedSentences]);
 
   const handleSubmitTranslation = async (translation: string) => {
     setIsEvaluating(true);
-    
-    setTimeout(() => {
-      const mockFeedback: TranslationFeedback = {
-        score: Math.floor(Math.random() * 30) + 70,
-        correctedTranslation: currentSentence.suggestedTranslation || "",
-        mistakes: [
-          {
-            original: "blood pressure monitoring",
-            correction: "blood pressure monitoring",
-            type: "vocabulary",
-            explanation: "Thuật ngữ 'theo dõi huyết áp' nên dịch là 'blood pressure monitoring'",
-          },
-          {
-            original: "detect early",
-            correction: "detect early",
-            type: "word_order",
-            explanation: "'Phát hiện sớm' dịch đúng là 'detect early' hoặc 'early detection of'",
-          },
-        ],
-        explanation:
-          "Bản dịch của bạn khá tốt! Bạn đã nắm được ý chính của câu. Hãy chú ý thêm về cách sử dụng thuật ngữ y khoa chuyên ngành để bản dịch tự nhiên hơn.",
+    setFeedback(null);
+    try {
+      const req = {
+        sentenceId: currentSentence.id,
+        vietnameseSentence: currentSentence.vietnamese,
+        englishTranslation: translation,
       };
-      setFeedback(mockFeedback);
+
+      const result = await practiceService.evaluateTranslation(req);
+      setFeedback(result);
+    } catch (err) {
+      const message =
+        (err as any)?.message ||
+        "Có lỗi khi đánh giá bản dịch. Vui lòng thử lại.";
+      toast({ title: "Lỗi", description: message });
+    } finally {
       setIsEvaluating(false);
-    }, 2000);
+    }
   };
 
   const handleNextSentence = () => {
@@ -97,40 +150,57 @@ export default function Practice() {
     }
   };
 
-  const handleAddSentences = () => {
+  const handleAddSentences = async () => {
+    if (!lessonId) {
+      toast({ title: "Lỗi", description: "Không xác định bài học." });
+      return;
+    }
+
     setIsAddingSentences(true);
-    
-    // Simulate AI generating new sentences
-    setTimeout(() => {
-      const newSentences = additionalSentences.map((s, i) => ({
-        ...s,
-        id: `new-${Date.now()}-${i}`,
-      }));
-      
+    try {
+      const newSentences = await lessonService.generateNewSentences(lessonId);
       setSentences((prev) => [...prev, ...newSentences]);
-      setIsAddingSentences(false);
       setAddSentenceOpen(false);
       setAddRequest("");
-      
       toast({
         title: "Đã thêm câu mới",
         description: `${newSentences.length} câu mới đã được thêm vào bài học.`,
       });
-    }, 2000);
+    } catch (err: any) {
+      toast({
+        title: "Lỗi",
+        description:
+          (err?.message as string) ||
+          "Không thể tạo câu mới. Vui lòng thử lại.",
+      });
+    } finally {
+      setIsAddingSentences(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
+      {isLoading && (
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon-sm" onClick={() => navigate("/lessons")}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => navigate("/lessons")}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="hidden sm:block">
               <h1 className="font-semibold text-sm">Thuật ngữ Y khoa cơ bản</h1>
-              <p className="text-xs text-muted-foreground">Bài học #{lessonId}</p>
+              <p className="text-xs text-muted-foreground">
+                Bài học #{lessonId}
+              </p>
             </div>
           </div>
 
@@ -143,20 +213,28 @@ export default function Practice() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setAddSentenceOpen(true)}
               className="gap-1"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Thêm câu</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/vocabulary")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/vocabulary")}
+            >
               <Book className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Từ vựng</span>
             </Button>
-            <Button variant="default" size="sm" onClick={() => setChatOpen(true)}>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setChatOpen(true)}
+            >
               <MessageSquare className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Hỏi AI</span>
             </Button>
@@ -241,10 +319,11 @@ export default function Practice() {
               Thêm câu mới
             </DialogTitle>
             <DialogDescription>
-              Yêu cầu AI tạo thêm câu để luyện tập. Bạn có thể mô tả loại câu muốn thêm.
+              Yêu cầu AI tạo thêm câu để luyện tập. Bạn có thể mô tả loại câu
+              muốn thêm.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <Textarea
               value={addRequest}
@@ -252,41 +331,45 @@ export default function Practice() {
               placeholder="VD: Thêm câu về chẩn đoán bệnh, thêm câu khó hơn về thuốc..."
               className="min-h-[100px]"
             />
-            
+
             <div className="flex gap-2 flex-wrap">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setAddRequest("Thêm 3 câu về chẩn đoán bệnh")}
               >
                 Chẩn đoán
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={() => setAddRequest("Thêm câu khó hơn về thuốc và liều lượng")}
+                onClick={() =>
+                  setAddRequest("Thêm câu khó hơn về thuốc và liều lượng")
+                }
               >
                 Thuốc & liều
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={() => setAddRequest("Thêm câu về giao tiếp với bệnh nhân")}
+                onClick={() =>
+                  setAddRequest("Thêm câu về giao tiếp với bệnh nhân")
+                }
               >
                 Giao tiếp
               </Button>
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => setAddSentenceOpen(false)}
               >
                 Hủy
               </Button>
-              <Button 
-                variant="hero" 
+              <Button
+                variant="hero"
                 className="flex-1"
                 onClick={handleAddSentences}
                 disabled={isAddingSentences}
