@@ -124,6 +124,7 @@ export default function LessonPreview() {
     const plan = await topicService.generateNewTopic(
       topic + " " + refinementRequest.trim()
     );
+    localStorage.setItem("plan", JSON.stringify(plan));
     setProposedLessons(plan.lessons);
     setRefinementRequest("");
     setIsRefining(false);
